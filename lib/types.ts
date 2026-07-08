@@ -27,7 +27,7 @@ export interface Game {
   created_at: string;
 }
 
-export type UserRole = "user" | "manager" | "admin";
+export type UserRole = "user" | "manager" | "admin" | "creator";
 
 export interface User {
   id: number;

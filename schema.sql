@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- adds the team_id column and widens the role check if they're missing.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user','manager','admin'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user','manager','admin', 'creator'));
 
 CREATE TABLE IF NOT EXISTS players (
   id SERIAL PRIMARY KEY,

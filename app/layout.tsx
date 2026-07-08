@@ -9,6 +9,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ליגת הקיץ 2026 - חדרה",
   description: "משחקים, קבוצות ותוצאות של ליגת הקיץ.",
+  icons: {
+    icon: "/logo.jpeg",
+    shortcut: "/logo.jpeg",
+    apple: "/logo.jpeg",
+  }
 };
 
 async function getUser() {
@@ -44,7 +49,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <Stack direction="row" spacing={1} alignItems="center">
                 <Button component="a" href="/" color="inherit">משחקים</Button>
                 <Button component="a" href="/teams" color="inherit">קבוצות</Button>
-                {user && user.role === "admin" && (
+                {user && user.role === "creator" && (
+                  <Button component="a" href="/creator" color="inherit">ניהול המערכת</Button>
+                )}
+                {user && (user.role === "admin" || user.role === "creator") && (
                   <Button component="a" href="/admin" color="inherit">ניהול</Button>
                 )}
                 {user && user.role === "manager" && (
