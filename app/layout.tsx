@@ -4,16 +4,12 @@ import { cookies } from "next/headers";
 import { AppBar, Toolbar, Box, Typography, Stack, Button, Avatar } from "@mui/material";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth";
 import Providers from "./providers";
+import NavLinks from "./NavLinks";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ליגת הקיץ 2026 - חדרה",
   description: "משחקים, קבוצות ותוצאות של ליגת הקיץ.",
-  icons: {
-    icon: "/logo.jpeg",
-    shortcut: "/logo.jpeg",
-    apple: "/logo.jpeg",
-  }
 };
 
 async function getUser() {
@@ -46,18 +42,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                   ליגת הקיץ <Box component="span" sx={{ color: "primary.main" }}>2026</Box>
                 </Typography>
               </Box>
+              <NavLinks role={user?.role} />
               <Stack direction="row" spacing={1} alignItems="center">
-                <Button component="a" href="/" color="inherit">משחקים</Button>
-                <Button component="a" href="/teams" color="inherit">קבוצות</Button>
-                {user && user.role === "creator" && (
-                  <Button component="a" href="/creator" color="inherit">ניהול המערכת</Button>
-                )}
-                {user && (user.role === "admin" || user.role === "creator") && (
-                  <Button component="a" href="/admin" color="inherit">ניהול</Button>
-                )}
-                {user && user.role === "manager" && (
-                  <Button component="a" href="/manager" color="inherit">ניהול קבוצה</Button>
-                )}
                 {user ? (
                   <Button component="a" href="/api/auth/logout" variant="outlined" size="small">
                     התנתקות ({user.username})

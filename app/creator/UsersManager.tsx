@@ -6,8 +6,6 @@ import {
 } from "@mui/material";
 import type { Team, UserRole } from "@/lib/types";
 
-// Shape of a row as returned by GET /api/users (see the SELECT list in
-// app/api/users/route.ts — this type has to match those column names).
 interface UserRow {
   id: number;
   username: string;
@@ -17,26 +15,18 @@ interface UserRow {
   created_at: string;
 }
 
-// Hebrew display labels, keyed by the raw role string stored in the DB.
 const ROLE_LABELS: Record<UserRole, string> = {
-  user: "צופה",
-  manager: "מנהל קבוצה",
-  admin: "מנהל ליגה",
-  creator: "יוצר",
+  user: "צופה/ה",
+  manager: "מנהל/ת קבוצה",
+  admin: "מנהל/ת ליגה",
+  creator: "יוצר/ת",
 };
 
-// PARENT component: fetches the data, renders one <UserRowItem> per row.
-// This mirrors the parent/child split used in app/admin/games/page.tsx
-// (AdminGamesPage + GameEditor) — the parent owns the list and the
-// "refresh everything" function; each row owns its own draft edit state.
 export default function UsersManager({ currentUserId }: { currentUserId: number }) {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetches both the user list and the team list in parallel (Promise.all,
-  // same pattern as app/admin/players/page.tsx). We need teams too, because
-  // when someone's role is set to "manager" the row needs a team picker.
   async function load() {
     const [usersRes, teamsRes] = await Promise.all([fetch("/api/users"), fetch("/api/teams")]);
     const usersData = await usersRes.json();
@@ -46,7 +36,6 @@ export default function UsersManager({ currentUserId }: { currentUserId: number 
     setLoading(false);
   }
 
-  // Load once on mount.
   useEffect(() => {
     load();
   }, []);
@@ -72,10 +61,6 @@ export default function UsersManager({ currentUserId }: { currentUserId: number 
               user={u}
               teams={teams}
               isSelf={u.id === currentUserId}
-              // Passing `load` down as onSaved means: after a successful
-              // save/delete, re-fetch the whole list from the server
-              // rather than trying to patch local state by hand. Simpler
-              // and less error-prone than manually mutating the array.
               onSaved={load}
             />
           ))}
@@ -85,10 +70,6 @@ export default function UsersManager({ currentUserId }: { currentUserId: number 
   );
 }
 
-// CHILD component: one editable row. Holds its own local "draft" state
-// (role, teamId) that's separate from the parent's data until "Save" is
-// clicked — exactly like GameEditor's homeScore/awayScore/status state in
-// app/admin/games/page.tsx.
 function UserRowItem({
   user,
   teams,
@@ -105,11 +86,6 @@ function UserRowItem({
   const [saving, setSaving] = useState(false);
 
   const isCreator = user.role === "creator";
-  // "locked" rows render as read-only text instead of editable controls.
-  // This is the client-side mirror of the two guards in the PATCH route
-  // handler (self-edit block, creator-edit block) — but note this check
-  // alone is NOT the security boundary. It just avoids showing controls
-  // that would fail anyway; the API route is what actually enforces it.
   const locked = isSelf || isCreator;
 
   async function save() {
@@ -117,21 +93,15 @@ function UserRowItem({
     const res = await fetch(`/api/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      // Only send a team_id if the chosen role is "manager" — for any
-      // other role, send null so the API's own team_id-clearing logic
-      // (see nextTeamId in the PATCH handler) has a consistent input.
       body: JSON.stringify({ role, team_id: role === "manager" ? Number(teamId) || null : null }),
     });
     const data = await res.json();
     setSaving(false);
     if (!res.ok) {
-      // Surfaces server-side validation errors (e.g. "select a team for
-      // a manager") directly — these come from the checks in the PATCH
-      // route handler above.
       alert(data.error);
       return;
     }
-    onSaved(); // tell the parent to reload the list
+    onSaved();
   }
 
   async function remove() {
@@ -145,8 +115,6 @@ function UserRowItem({
     onSaved();
   }
 
-  // Locked-row rendering: plain text, no inputs, with an explanatory note
-  // instead of action buttons.
   if (locked) {
     return (
       <TableRow>
@@ -164,16 +132,10 @@ function UserRowItem({
     );
   }
 
-  // Editable-row rendering.
   return (
     <TableRow>
       <TableCell>{user.username}</TableCell>
       <TableCell>
-        {/* Note: no "creator" <MenuItem> here at all — the same whitelist
-            idea as ASSIGNABLE_ROLES in the API route, just expressed as
-            "don't render the option" instead of "reject the request."
-            Both layers matter: this one is for UX, the API check is
-            for security. */}
         <TextField select size="small" value={role} onChange={(e) => setRole(e.target.value as UserRole)} sx={{ minWidth: 160 }}>
           <MenuItem value="user">צופה/ה</MenuItem>
           <MenuItem value="manager">מנהל/ת קבוצה</MenuItem>
@@ -181,9 +143,6 @@ function UserRowItem({
         </TextField>
       </TableCell>
       <TableCell>
-        {/* Team picker only shows up when the drafted role is "manager" -
-            for any other role there's nothing to pick, so we just show
-            a dash. */}
         {role === "manager" ? (
           <TextField select size="small" value={teamId} onChange={(e) => setTeamId(e.target.value)} sx={{ minWidth: 150 }}>
             {teams.map((t) => (

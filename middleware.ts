@@ -29,22 +29,16 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const payload = token ? await verify(token, process.env.JWT_SECRET as string) : null;
 
-  if (path.startsWith("/admin")) {
-    const isAdmin = !!payload && payload.role === "admin";
-    const isCreator = !!payload && payload.role === "creator";
-    if (!isCreator && !isAdmin) {
-      return toLogin(req);
-    }
+  const isCreator = !!payload && payload.role === "creator";
+  const isAdmin = !!payload && payload.role === "admin";
+
+  if (path.startsWith("/creator")) {
+    if (!isCreator) return toLogin(req);
+  } else if (path.startsWith("/admin")) {
+    if (!isAdmin && !isCreator) return toLogin(req);
   } else if (path.startsWith("/manager")) {
     const isManager = !!payload && payload.role === "manager" && payload.team_id != null;
-    const isAdmin = !!payload && payload.role === "admin";
-    const isCreator = !!payload && payload.role === "creator";
-    if (!isManager && !isAdmin && !isCreator) {
-      return toLogin(req);
-    }
-  } else if (path.startsWith("/creator")) {
-    if (!payload || payload.role !== "creator")
-      return toLogin(req);
+    if (!isManager && !isAdmin) return toLogin(req);
   }
 
   return NextResponse.next();

@@ -8,15 +8,22 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
   return verifySessionToken(token);
 }
 
+// Admin tools are also available to the creator (creator is a superset of admin).
 export async function requireAdmin(): Promise<SessionPayload | null> {
   const user = await getCurrentUser();
-  if (!user) return null;
-  if (user.role === "admin" || user.role === "creator") return user;
-  return null;
+  if (!user || (user.role !== "admin" && user.role !== "creator")) return null;
+  return user;
+}
+
+// Only the creator role can manage other users' accounts/roles.
+export async function requireCreator(): Promise<SessionPayload | null> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "creator") return null;
+  return user;
 }
 
 // Returns the current user if they're allowed to manage the given team's
-// roster: a full admin (any team), or a manager assigned to that specific team.
+// roster: a full admin/creator (any team), or a manager assigned to that specific team.
 export async function canManageTeam(teamId: number | string): Promise<SessionPayload | null> {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -25,10 +32,4 @@ export async function canManageTeam(teamId: number | string): Promise<SessionPay
     return user;
   }
   return null;
-}
-
-export async function requireCreator(): Promise<SessionPayload | null> {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "creator") return null;
-  return user;
 }

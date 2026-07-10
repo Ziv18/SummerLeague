@@ -18,11 +18,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { team_id, name, number, position } = (await req.json()) as {
+  const { team_id, name, number, active_league } = (await req.json()) as {
     team_id?: number | string;
     name?: string;
     number?: number | null;
-    position?: string | null;
+    active_league?: string | null;
   };
   if (!team_id || !name || !name.trim()) {
     return NextResponse.json({ error: "יש לבחור קבוצה ולהזין שם שחקן." }, { status: 400 });
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { rows } = await query<Player>(
-    `INSERT INTO players (team_id, name, number, position) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [team_id, name.trim(), number || null, position || null]
+    `INSERT INTO players (team_id, name, number, active_league) VALUES ($1, $2, $3, $4) RETURNING *`,
+    [team_id, name.trim(), number || null, active_league || null]
   );
   return NextResponse.json({ player: rows[0] }, { status: 201 });
 }

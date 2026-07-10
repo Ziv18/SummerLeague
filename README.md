@@ -9,6 +9,20 @@ Built with Next.js (App Router) + Postgres (your Neon database) + plain SQL
 (no ORM). Auth is a signed JWT in an httpOnly cookie; passwords are hashed
 with bcrypt.
 
+### Team colors and who can edit them
+
+Every team now has two colors (`color`, `color2` — shown as gradients/split
+swatches on the teams grid, team page, and game rows). Editing rules:
+
+- **Admins/creators** can rename a team and set both colors, for any team,
+  from `/admin/teams`.
+- **A team's own manager** can change that team's colors (but not its name)
+  from `/manager` — same page they already use to manage the roster.
+- **Admins/creators** also get a team picker on `/manager` now, so they can
+  jump into any team's colors/roster without needing the admin panel.
+
+Creating and deleting teams is still admin/creator only either way.
+
 ## What was fixed
 
 The sign-in page error was caused by mixing CommonJS (`require`/`module.exports`)
@@ -75,8 +89,8 @@ This runs `schema.sql` against your Neon database (creates `users`, `teams`,
 `players`, `games`). Safe to re-run — it won't destroy existing data.
 
 **If you set this up before:** re-run `npm run migrate` now — it adds the new
-`manager` role and the `team_id` column used by team managers, without
-touching any existing data.
+`manager`/`creator` roles, the `team_id` column, and each team's second
+color (`color2`), without touching any existing data.
 
 ## 4. Run it locally
 
@@ -121,6 +135,29 @@ WHERE username = 'their-username';
 
 They'll see a "ניהול קבוצה" (Manage team) link in the nav after logging back
 in, leading to a roster page scoped to just their team.
+
+### The creator role (you)
+
+`creator` sits above `admin` — it can do everything admins can, plus manage
+every user's role from a page at `/creator`. It's meant for exactly one
+person: you, the site owner.
+
+By design, **the creator role can only be granted via direct SQL** — never
+through signup, never through the UI, not even by another creator clicking a
+button. This is intentional: the highest-privilege role should never be one
+UI bug away from being handed out.
+
+To make yourself the creator:
+
+```sql
+UPDATE users SET role = 'creator' WHERE username = 'your-username';
+```
+
+After that, log back in and you'll see a "ניהול משתמשים" (Manage users) link.
+From there you can promote/demote anyone between `user`, `manager` (with a
+team), and `admin` — but not `creator`; that stays SQL-only, and the
+`/creator` page won't let you edit your own account or another creator's
+account, so you can't accidentally lock yourself out.
 
 ## 6. Deploy
 

@@ -29,7 +29,15 @@ export default async function TeamsPage() {
         <Grid container spacing={2}>
           {teams.map((t) => (
             <Grid item xs={12} sm={6} md={4} key={t.id}>
-              <Card variant="outlined" sx={{ borderTop: "3px solid", borderTopColor: t.color || "primary.main", height: "100%" }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  height: "100%",
+                  borderTop: "4px solid",
+                  borderTopColor: "transparent",
+                  borderImage: `linear-gradient(90deg, ${t.color || "#F2A93B"} 50%, ${t.color2 || "#0F1B2D"} 50%) 1`,
+                }}
+              >
                 <CardActionArea component="a" href={`/teams/${t.id}`} sx={{ height: "100%" }}>
                   <CardContent>
                     <Typography variant="h6">{t.name}</Typography>

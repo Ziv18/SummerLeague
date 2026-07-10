@@ -4,23 +4,27 @@ CREATE TABLE IF NOT EXISTS teams (
   id SERIAL PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
   color TEXT DEFAULT '#F2A93B',
+  color2 TEXT DEFAULT '#0F1B2D',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Safe to re-run on a database created before teams had a second color.
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS color2 TEXT DEFAULT '#0F1B2D';
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','manager','admin')),
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','manager','admin','creator')),
   team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Safe to re-run on a database created before the "manager" role existed:
+-- Safe to re-run on a database created before the "manager"/"creator" roles existed:
 -- adds the team_id column and widens the role check if they're missing.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user','manager','admin', 'creator'));
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user','manager','admin','creator'));
 
 CREATE TABLE IF NOT EXISTS players (
   id SERIAL PRIMARY KEY,
@@ -30,6 +34,8 @@ CREATE TABLE IF NOT EXISTS players (
   position TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE players RENAME position to active_league;
 
 CREATE TABLE IF NOT EXISTS games (
   id SERIAL PRIMARY KEY,

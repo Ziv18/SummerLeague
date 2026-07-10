@@ -2,7 +2,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import {
   Box, Typography, Paper, Stack, TextField, Button, Alert, MenuItem,
-  Table, TableHead, TableBody, TableRow, TableCell,
+  Table, TableHead, TableBody, TableRow, TableCell, Snackbar,
 } from "@mui/material";
 import type { Team, Player } from "@/lib/types";
 
@@ -16,7 +16,13 @@ export default function AdminPlayersPage() {
   const [teamId, setTeamId] = useState("");
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
-  const [position, setPosition] = useState("");
+  const [active_league, setActiveLeague] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingTeamId, setEditingTeamId] = useState("");
+  const [editingLeague, setEditingLeague] = useState("");
+  const [editingNumber, setEditingNumber] = useState("");
+  const [search, setSearch] = useState("");
+  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +51,7 @@ export default function AdminPlayersPage() {
     const res = await fetch("/api/players", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ team_id: teamId, name, number: number ? Number(number) : null, position }),
+      body: JSON.stringify({ team_id: teamId, name, number: number ? Number(number) : null, active_league }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -54,15 +60,63 @@ export default function AdminPlayersPage() {
     }
     setName("");
     setNumber("");
-    setPosition("");
+    setActiveLeague("");
+    setSuccess("השחקן נוסף בהצלחה");
     load();
   }
 
   async function removePlayer(id: number) {
     if (!confirm("להסיר את השחקן?")) return;
-    await fetch(`/api/players/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/players/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error);
+      return;
+    }
+    setSuccess("השחקן הוסר בהצלחה");
     load();
   }
+
+  function startEditing(player: PlayerWithTeam) {
+    setEditingId(player.id);
+    setEditingTeamId(String(player.team_id));
+    setEditingLeague(player.active_league || "");
+    setEditingNumber(player.number == null ? "" : String(player.number));
+    setError("");
+  }
+
+  async function savePlayer(id: number) {
+    setError("");
+    const res = await fetch(`/api/players/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        team_id: Number(editingTeamId),
+        active_league: editingLeague,
+        number: editingNumber === "" ? null : Number(editingNumber),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error);
+      return;
+    }
+    setEditingId(null);
+    setSuccess("השחקן עודכן בהצלחה");
+    load();
+  }
+
+  const editingPlayer = players.find((player) => player.id === editingId);
+  const hasPlayerChanges = Boolean(editingPlayer && (
+    editingTeamId !== String(editingPlayer.team_id) ||
+    editingLeague !== (editingPlayer.active_league || "") ||
+    editingNumber !== (editingPlayer.number == null ? "" : String(editingPlayer.number))
+  ));
+  const normalizedSearch = search.trim().toLowerCase();
+  const visiblePlayers = normalizedSearch
+    ? players.filter((player) => [player.name, player.team_name, player.active_league || "", String(player.number ?? "")]
+      .some((value) => value.toLowerCase().includes(normalizedSearch)))
+    : players;
 
   return (
     <Box>
@@ -85,10 +139,10 @@ export default function AdminPlayersPage() {
               fullWidth
             />
             <TextField
-              label="עמדה"
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              placeholder="לדוגמה: גארד"
+              label="שחקן פעיל"
+              value={active_league}
+              onChange={(e) => setActiveLeague(e.target.value)}
+              placeholder="לדוגמה: ליגה א"
               fullWidth
             />
             {error && <Alert severity="error">{error}</Alert>}
@@ -101,6 +155,12 @@ export default function AdminPlayersPage() {
       </Paper>
 
       <Typography variant="h5" sx={{ mb: 2 }}>כל השחקנים</Typography>
+      <TextField
+        label="חיפוש שחקן"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        sx={{ mb: 2, minWidth: 280 }}
+      />
       {loading ? (
         <Typography color="text.secondary">טוען…</Typography>
       ) : players.length === 0 ? (
@@ -113,18 +173,36 @@ export default function AdminPlayersPage() {
                 <TableCell>#</TableCell>
                 <TableCell>שם</TableCell>
                 <TableCell>קבוצה</TableCell>
-                <TableCell>עמדה</TableCell>
+                <TableCell>שחקן פעיל</TableCell>
                 <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
-              {players.map((p) => (
+              {visiblePlayers.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell>{p.number ?? "—"}</TableCell>
+                  <TableCell>
+                    {editingId === p.id ? (
+                      <TextField size="small" type="number" value={editingNumber} onChange={(e) => setEditingNumber(e.target.value)} inputProps={{ min: 0, max: 99 }} sx={{ width: 80 }} />
+                    ) : p.number ?? "—"}
+                  </TableCell>
                   <TableCell>{p.name}</TableCell>
-                  <TableCell>{p.team_name}</TableCell>
-                  <TableCell>{p.position || "—"}</TableCell>
+                  <TableCell>
+                    {editingId === p.id ? (
+                      <TextField select size="small" value={editingTeamId} onChange={(e) => setEditingTeamId(e.target.value)} sx={{ minWidth: 140 }}>
+                        {teams.map((team) => <MenuItem key={team.id} value={team.id}>{team.name}</MenuItem>)}
+                      </TextField>
+                    ) : p.team_name}
+                  </TableCell>
+                  <TableCell>
+                    {editingId === p.id ? (
+                      <TextField size="small" value={editingLeague} onChange={(e) => setEditingLeague(e.target.value)} />
+                    ) : p.active_league || "—"}
+                  </TableCell>
                   <TableCell align="left">
+                    {editingId === p.id ? <>
+                      <Button size="small" onClick={() => savePlayer(p.id)} disabled={!hasPlayerChanges}>שמירה</Button>
+                      <Button size="small" onClick={() => setEditingId(null)}>ביטול</Button>
+                    </> : <Button size="small" onClick={() => startEditing(p)}>עריכה</Button>}
                     <Button color="error" size="small" onClick={() => removePlayer(p.id)}>הסרה</Button>
                   </TableCell>
                 </TableRow>
@@ -133,6 +211,10 @@ export default function AdminPlayersPage() {
           </Table>
         </Paper>
       )}
+      <Snackbar open={Boolean(success)} autoHideDuration={3000} onClose={() => setSuccess("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+        <Alert severity="success" variant="filled" onClose={() => setSuccess("")}>{success}</Alert>
+      </Snackbar>
     </Box>
   );
 }

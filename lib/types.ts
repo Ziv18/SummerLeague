@@ -2,6 +2,7 @@ export interface Team {
   id: number;
   name: string;
   color: string | null;
+  color2: string | null;
   created_at: string;
 }
 
@@ -10,7 +11,7 @@ export interface Player {
   team_id: number;
   name: string;
   number: number | null;
-  position: string | null;
+  active_league: string | null;
   created_at: string;
 }
 

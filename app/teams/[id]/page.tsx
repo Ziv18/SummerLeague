@@ -1,5 +1,6 @@
 import { Container, Box, Typography, Card, List, ListItem, ListItemText, Chip, Stack } from "@mui/material";
 import { query } from "@/lib/db";
+import { formatGameDate } from "@/lib/date";
 import type { Team, Player, Game, GameStatus } from "@/lib/types";
 
 interface GameWithTeams extends Game {
@@ -40,7 +41,15 @@ export default async function TeamPage({ params }: { params: { id: string } }) {
 
   return (
     <Container maxWidth="md" sx={{ pb: 8 }}>
-      <Box sx={{ py: 7, borderRight: "4px solid", borderColor: team.color || "primary.main", pr: 2.5 }}>
+      <Box
+        sx={{
+          py: 7,
+          borderRight: "5px solid",
+          borderColor: "transparent",
+          borderImage: `linear-gradient(180deg, ${team.color || "#F2A93B"}, ${team.color2 || "#0F1B2D"}) 1`,
+          pr: 2.5,
+        }}
+      >
         <Typography variant="overline" color="primary.main" sx={{ letterSpacing: 2 }}>קבוצה</Typography>
         <Typography variant="h3" sx={{ mt: 1 }}>{team.name}</Typography>
       </Box>
@@ -60,7 +69,7 @@ export default async function TeamPage({ params }: { params: { id: string } }) {
                 </Typography>
                 <ListItemText primary={p.name} />
                 <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                  {p.position || ""}
+                  {p.active_league || ""}
                 </Typography>
               </ListItem>
             ))}
@@ -74,7 +83,7 @@ export default async function TeamPage({ params }: { params: { id: string } }) {
       ) : (
         <Stack spacing={1.5}>
           {games.map((g) => {
-            const date = new Date(g.game_date).toLocaleDateString("he-IL", { month: "short", day: "numeric" });
+            const date = formatGameDate(g.game_date);
             const hasScore = g.status !== "scheduled" && g.home_score !== null && g.away_score !== null;
             return (
               <Card variant="outlined" key={g.id} sx={{ p: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2 }}>

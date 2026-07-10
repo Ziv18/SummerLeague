@@ -3,6 +3,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import {
   Box, Typography, Paper, Stack, TextField, Button, Alert, MenuItem, Card,
 } from "@mui/material";
+import { formatGameDateTime } from "@/lib/date";
 import type { Team, Game, GameStatus } from "@/lib/types";
 
 interface GameWithTeams extends Game {
@@ -62,7 +63,13 @@ export default function AdminGamesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    if (res.ok) load();
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error);
+      return false;
+    }
+    load();
+    return true;
   }
 
   async function removeGame(id: number) {
@@ -123,22 +130,40 @@ function GameEditor({
   onDelete,
 }: {
   g: GameWithTeams;
-  onUpdate: (id: number, patch: Partial<{ home_score: number | null; away_score: number | null; status: GameStatus }>) => void;
+  onUpdate: (id: number, patch: Partial<{ home_score: number | null; away_score: number | null; status: GameStatus }>) => Promise<boolean>;
   onDelete: (id: number) => void;
 }) {
   const [homeScore, setHomeScore] = useState(g.home_score ?? "");
   const [awayScore, setAwayScore] = useState(g.away_score ?? "");
   const [status, setStatus] = useState<GameStatus>(g.status);
+  const [editing, setEditing] = useState(false);
+  const hasChanges = homeScore !== (g.home_score ?? "") || awayScore !== (g.away_score ?? "") || status !== g.status;
+
+  function cancel() {
+    setHomeScore(g.home_score ?? "");
+    setAwayScore(g.away_score ?? "");
+    setStatus(g.status);
+    setEditing(false);
+  }
+
+  async function save() {
+    const saved = await onUpdate(g.id, {
+      home_score: homeScore === "" ? null : Number(homeScore),
+      away_score: awayScore === "" ? null : Number(awayScore),
+      status,
+    });
+    if (saved) setEditing(false);
+  }
 
   return (
     <Card variant="outlined" sx={{ p: 2.5 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography fontWeight={700}>{g.home_name} נגד {g.away_name}</Typography>
         <Typography variant="caption" sx={{ fontFamily: "'JetBrains Mono', monospace", color: "text.secondary" }}>
-          {new Date(g.game_date).toLocaleString("he-IL", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+          {formatGameDateTime(g.game_date)}
         </Typography>
       </Stack>
-      <Stack direction="row" spacing={2} alignItems="flex-end" flexWrap="wrap" useFlexGap>
+      {editing ? <Stack direction="row" spacing={2} alignItems="flex-end" flexWrap="wrap" useFlexGap>
         <TextField
           label={g.home_name}
           type="number"
@@ -164,20 +189,16 @@ function GameEditor({
           <MenuItem value="live">חי</MenuItem>
           <MenuItem value="final">סופי</MenuItem>
         </TextField>
-        <Button
-          variant="contained"
-          onClick={() =>
-            onUpdate(g.id, {
-              home_score: homeScore === "" ? null : Number(homeScore),
-              away_score: awayScore === "" ? null : Number(awayScore),
-              status,
-            })
-          }
-        >
-          שמירה
-        </Button>
+        <Button variant="contained" disabled={!hasChanges} onClick={save}>שמירה</Button>
+        <Button onClick={cancel}>ביטול</Button>
         <Button color="error" onClick={() => onDelete(g.id)}>מחיקה</Button>
-      </Stack>
+      </Stack> : <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Typography>{g.home_name}: {g.home_score ?? "—"}</Typography>
+        <Typography>{g.away_name}: {g.away_score ?? "—"}</Typography>
+        <Typography color="text.secondary">{status}</Typography>
+        <Button onClick={() => setEditing(true)}>עריכה</Button>
+        <Button color="error" onClick={() => onDelete(g.id)}>מחיקה</Button>
+      </Stack>}
     </Card>
   );
 }

@@ -10,6 +10,7 @@ export default function AdminTeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#F2A93B");
+  const [color2, setColor2] = useState("#0F1B2D");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +31,7 @@ export default function AdminTeamsPage() {
     const res = await fetch("/api/teams", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, color }),
+      body: JSON.stringify({ name, color, color2 }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -59,13 +60,22 @@ export default function AdminTeamsPage() {
         <Box component="form" onSubmit={addTeam}>
           <Stack spacing={2.5} sx={{ maxWidth: 360 }}>
             <TextField label="שם הקבוצה" value={name} onChange={(e) => setName(e.target.value)} required fullWidth />
-            <TextField
-              label="צבע"
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              sx={{ width: 100 }}
-            />
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="צבע ראשי"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                sx={{ width: 100 }}
+              />
+              <TextField
+                label="צבע משני"
+                type="color"
+                value={color2}
+                onChange={(e) => setColor2(e.target.value)}
+                sx={{ width: 100 }}
+              />
+            </Stack>
             {error && <Alert severity="error">{error}</Alert>}
             <Button type="submit" variant="contained">הוספת קבוצה</Button>
           </Stack>
@@ -83,26 +93,86 @@ export default function AdminTeamsPage() {
             <TableHead>
               <TableRow>
                 <TableCell>שם</TableCell>
-                <TableCell>צבע</TableCell>
+                <TableCell>צבעים</TableCell>
                 <TableCell />
               </TableRow>
             </TableHead>
             <TableBody>
               {teams.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>{t.name}</TableCell>
-                  <TableCell>
-                    <Box sx={{ width: 20, height: 20, borderRadius: "5px", bgcolor: t.color || "primary.main" }} />
-                  </TableCell>
-                  <TableCell align="left">
-                    <Button color="error" size="small" onClick={() => removeTeam(t.id)}>מחיקה</Button>
-                  </TableCell>
-                </TableRow>
+                <TeamRow key={t.id} team={t} onSaved={load} onDelete={removeTeam} />
               ))}
             </TableBody>
           </Table>
         </Paper>
       )}
     </Box>
+  );
+}
+
+// One editable row: two color swatches with their own <input type="color">
+// underneath, plus a save button. Local draft state, only sent to the API
+// when "שמירה" is clicked - same pattern as the score editor on the games page.
+function TeamRow({
+  team,
+  onSaved,
+  onDelete,
+}: {
+  team: Team;
+  onSaved: () => void;
+  onDelete: (id: number) => void;
+}) {
+  const [color, setColor] = useState(team.color || "#F2A93B");
+  const [color2, setColor2] = useState(team.color2 || "#0F1B2D");
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const hasChanges = color !== (team.color || "#F2A93B") || color2 !== (team.color2 || "#0F1B2D");
+
+  function cancel() {
+    setColor(team.color || "#F2A93B");
+    setColor2(team.color2 || "#0F1B2D");
+    setEditing(false);
+  }
+
+  async function save() {
+    setSaving(true);
+    const res = await fetch(`/api/teams/${team.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ color, color2 }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = await res.json();
+      alert(data.error);
+      return;
+    }
+    setEditing(false);
+    onSaved();
+  }
+
+  return (
+    <TableRow>
+      <TableCell>{team.name}</TableCell>
+      <TableCell>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          {editing ? <>
+            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ width: 32, height: 32, border: "none", borderRadius: 6, padding: 0 }} />
+            <input type="color" value={color2} onChange={(e) => setColor2(e.target.value)} style={{ width: 32, height: 32, border: "none", borderRadius: 6, padding: 0 }} />
+          </> : <>
+            <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: color }} />
+            <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: color2 }} />
+          </>}
+        </Stack>
+      </TableCell>
+      <TableCell align="left">
+        <Stack direction="row" spacing={1}>
+          {editing ? <>
+            <Button size="small" variant="contained" disabled={saving || !hasChanges} onClick={save}>שמירה</Button>
+            <Button size="small" onClick={cancel}>ביטול</Button>
+          </> : <Button size="small" onClick={() => setEditing(true)}>עריכה</Button>}
+          <Button size="small" color="error" onClick={() => onDelete(team.id)}>מחיקה</Button>
+        </Stack>
+      </TableCell>
+    </TableRow>
   );
 }
