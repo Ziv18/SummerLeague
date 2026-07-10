@@ -10,6 +10,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ליגת הקיץ 2026 - חדרה",
   description: "משחקים, קבוצות ותוצאות של ליגת הקיץ.",
+  icons: {
+    icon: "/logo.jpeg",
+  },
 };
 
 async function getUser() {
