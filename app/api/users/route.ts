@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { requireCreator } from "@/lib/require-admin";
+import { requireCreatorOrAdmin } from "@/lib/require-admin";
 
 export async function GET() {
-  const creator = await requireCreator();
-  if (!creator) return NextResponse.json({ error: "לכותב/ת האתר בלבד." }, { status: 403 });
+  const user = await requireCreatorOrAdmin();
+  if (!user) return NextResponse.json({ error: "למנהלים בלבד." }, { status: 403 });
 
   // Never return password_hash.
   const { rows } = await query(

@@ -33,7 +33,7 @@ export async function middleware(req: NextRequest) {
   const isAdmin = !!payload && payload.role === "admin";
 
   if (path.startsWith("/creator")) {
-    if (!isCreator) return toLogin(req);
+    if (!isCreator && !isAdmin) return toLogin(req);
   } else if (path.startsWith("/admin")) {
     if (!isAdmin && !isCreator) return toLogin(req);
   } else if (path.startsWith("/manager")) {

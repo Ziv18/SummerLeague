@@ -15,7 +15,7 @@ export default function NavLinks({ role }: { role?: UserRole }) {
     { href: "/teams", label: "קבוצות" },
     ...(role === "admin" || role === "creator" ? [{ href: "/admin", label: "ניהול" }] : []),
     ...(role === "manager" || role === "admin" ? [{ href: "/manager", label: "ניהול קבוצה" }] : []),
-    ...(role === "creator" ? [{ href: "/creator", label: "ניהול משתמשים" }] : []),
+    ...(role === "admin" || role === "creator" ? [{ href: "/creator", label: "ניהול משתמשים" }] : []),
   ];
 
   return (

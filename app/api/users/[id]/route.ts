@@ -1,17 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { query } from "@/lib/db";
-import { requireCreator } from "@/lib/require-admin";
+import { requireCreator, requireCreatorOrAdmin } from "@/lib/require-admin";
 import type { User, UserRole } from "@/lib/types";
 
 // Roles assignable through this UI. "creator" is intentionally excluded —
 // it can only be granted via a direct SQL statement, never through the app.
-const ASSIGNABLE_ROLES: UserRole[] = ["user", "manager", "admin"];
+const CREATOR_ASSIGNABLE_ROLES: UserRole[] = ["user", "manager", "admin"];
+const ADMIN_ASSIGNABLE_ROLES: UserRole[] = ["user", "manager"];
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const creator = await requireCreator();
-  if (!creator) return NextResponse.json({ error: "לכותב/ת האתר בלבד." }, { status: 403 });
+  const user = await requireCreatorOrAdmin();
+  if (!user) return NextResponse.json({ error: "למנהלים בלבד." }, { status: 403 });
 
-  if (String(creator.id) === String(params.id)) {
+  if (String(user.id) === String(params.id)) {
     return NextResponse.json({ error: "לא ניתן לערוך את החשבון של עצמך מכאן." }, { status: 400 });
   }
 
@@ -22,10 +23,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "לא ניתן לערוך חשבון יוצר/ת דרך הממשק." }, { status: 403 });
   }
 
-  const { role, team_id } = (await req.json()) as { role?: UserRole; team_id?: number | null };
+  if (user.role === "admin" && (existing.role === "admin" || existing.role === "creator")) {
+    return NextResponse.json({ error: "מנהל לא יכול לשנות חשבון של מנהל או יוצר." }, { status: 403 });
+  }
 
-  if (role && !ASSIGNABLE_ROLES.includes(role)) {
+  const { role, team_id } = (await req.json()) as { role?: UserRole; team_id?: number | null };
+  const assignableRoles = user.role === "creator" ? CREATOR_ASSIGNABLE_ROLES : ADMIN_ASSIGNABLE_ROLES;
+
+  if (role && !assignableRoles.includes(role)) {
     return NextResponse.json({ error: "תפקיד לא תקין." }, { status: 400 });
+  }
+  if (role === "admin" && user.role !== "creator") {
+    return NextResponse.json({ error: "מנהל לא יכול להעניק תפקיד מנהל/ת ליגה." }, { status: 403 });
   }
   if (role === "manager" && !team_id) {
     return NextResponse.json({ error: "יש לבחור קבוצה עבור מנהל/ת קבוצה." }, { status: 400 });

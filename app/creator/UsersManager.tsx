@@ -22,7 +22,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   creator: "יוצר/ת",
 };
 
-export default function UsersManager({ currentUserId }: { currentUserId: number }) {
+export default function UsersManager({ currentUserId, currentUserRole }: { currentUserId: number; currentUserRole: UserRole }) {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +60,7 @@ export default function UsersManager({ currentUserId }: { currentUserId: number 
               key={u.id}
               user={u}
               teams={teams}
+              currentUserRole={currentUserRole}
               isSelf={u.id === currentUserId}
               onSaved={load}
             />
@@ -73,11 +74,13 @@ export default function UsersManager({ currentUserId }: { currentUserId: number 
 function UserRowItem({
   user,
   teams,
+  currentUserRole,
   isSelf,
   onSaved,
 }: {
   user: UserRow;
   teams: Team[];
+  currentUserRole: UserRole;
   isSelf: boolean;
   onSaved: () => void;
 }) {
@@ -85,8 +88,10 @@ function UserRowItem({
   const [teamId, setTeamId] = useState<string>(user.team_id ? String(user.team_id) : "");
   const [saving, setSaving] = useState(false);
 
-  const isCreator = user.role === "creator";
-  const locked = isSelf || isCreator;
+  const isCreatorAccount = user.role === "creator";
+  const editableByAdmin = currentUserRole === "admin" && user.role !== "admin" && user.role !== "creator";
+  const editableByCreator = currentUserRole === "creator";
+  const locked = isSelf || isCreatorAccount || (!editableByCreator && !editableByAdmin);
 
   async function save() {
     setSaving(true);
@@ -116,6 +121,12 @@ function UserRowItem({
   }
 
   if (locked) {
+    const lockMessage = isSelf
+      ? "לא ניתן לערוך את עצמך"
+      : isCreatorAccount
+      ? "ניתן לשנות רק דרך המסד"
+      : "מנהל לא יכול לשנות חשבון מנהל או יוצר";
+
     return (
       <TableRow>
         <TableCell>
@@ -125,11 +136,19 @@ function UserRowItem({
         <TableCell>{user.team_name || "—"}</TableCell>
         <TableCell align="left">
           <Typography variant="caption" color="text.secondary">
-            {isCreator ? "ניתן לשנות רק דרך המסד" : "לא ניתן לערוך את עצמך"}
+            {lockMessage}
           </Typography>
         </TableCell>
       </TableRow>
     );
+  }
+
+  const roleOptions: Array<{ value: UserRole; label: string }> = [
+    { value: "user", label: "צופה/ה" },
+    { value: "manager", label: "מנהל/ת קבוצה" },
+  ];
+  if (currentUserRole === "creator") {
+    roleOptions.push({ value: "admin", label: "מנהל/ת ליגה" });
   }
 
   return (
@@ -137,9 +156,9 @@ function UserRowItem({
       <TableCell>{user.username}</TableCell>
       <TableCell>
         <TextField select size="small" value={role} onChange={(e) => setRole(e.target.value as UserRole)} sx={{ minWidth: 160 }}>
-          <MenuItem value="user">צופה/ה</MenuItem>
-          <MenuItem value="manager">מנהל/ת קבוצה</MenuItem>
-          <MenuItem value="admin">מנהל/ת ליגה</MenuItem>
+          {roleOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+          ))}
         </TextField>
       </TableCell>
       <TableCell>
@@ -156,7 +175,9 @@ function UserRowItem({
       <TableCell align="left">
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button size="small" variant="contained" disabled={saving} onClick={save}>שמירה</Button>
-          <Button size="small" color="error" onClick={remove}>מחיקה</Button>
+          {currentUserRole === "creator" && (
+            <Button size="small" color="error" onClick={remove}>מחיקה</Button>
+          )}
         </Box>
       </TableCell>
     </TableRow>

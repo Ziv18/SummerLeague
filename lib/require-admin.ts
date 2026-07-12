@@ -15,10 +15,17 @@ export async function requireAdmin(): Promise<SessionPayload | null> {
   return user;
 }
 
-// Only the creator role can manage other users' accounts/roles.
+// Only the creator role can manage other users' accounts/roles through the full user manager.
 export async function requireCreator(): Promise<SessionPayload | null> {
   const user = await getCurrentUser();
   if (!user || user.role !== "creator") return null;
+  return user;
+}
+
+// Admins may also manage users and team managers, but not other admins or creators.
+export async function requireCreatorOrAdmin(): Promise<SessionPayload | null> {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "creator" && user.role !== "admin")) return null;
   return user;
 }
 
