@@ -20,11 +20,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const existing = existingRows[0];
   if (!existing) return NextResponse.json({ error: "המשתמש לא נמצא." }, { status: 404 });
   if (existing.role === "creator") {
-    return NextResponse.json({ error: "לא ניתן לערוך חשבון יוצר/ת דרך הממשק." }, { status: 403 });
+    return NextResponse.json({ error: "לא ניתן לערוך חשבון יוצר." }, { status: 403 });
   }
 
-  if (user.role === "admin" && (existing.role === "admin" || existing.role === "creator")) {
-    return NextResponse.json({ error: "מנהל לא יכול לשנות חשבון של מנהל או יוצר." }, { status: 403 });
+  if (user.role === "admin" && existing.role === "admin") {
+    return NextResponse.json({ error: "מנהל לא יכול לשנות חשבון של מנהל אחר." }, { status: 403 });
   }
 
   const { role, team_id } = (await req.json()) as { role?: UserRole; team_id?: number | null };
@@ -34,10 +34,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "תפקיד לא תקין." }, { status: 400 });
   }
   if (role === "admin" && user.role !== "creator") {
-    return NextResponse.json({ error: "מנהל לא יכול להעניק תפקיד מנהל/ת ליגה." }, { status: 403 });
+    return NextResponse.json({ error: "מנהל לא יכול להעניק תפקיד מנהל ליגה." }, { status: 403 });
   }
   if (role === "manager" && !team_id) {
-    return NextResponse.json({ error: "יש לבחור קבוצה עבור מנהל/ת קבוצה." }, { status: 400 });
+    return NextResponse.json({ error: "יש לבחור קבוצה עבור מנהל קבוצה." }, { status: 400 });
   }
 
   const nextRole = role || existing.role;
@@ -61,7 +61,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   const { rows: existingRows } = await query<User>(`SELECT role FROM users WHERE id = $1`, [params.id]);
   if (existingRows[0]?.role === "creator") {
-    return NextResponse.json({ error: "לא ניתן למחוק חשבון יוצר/ת דרך הממשק." }, { status: 403 });
+    return NextResponse.json({ error:"לא ניתן למחוק חשבון יוצר." }, { status: 403 });
   }
 
   await query(`DELETE FROM users WHERE id = $1`, [params.id]);
