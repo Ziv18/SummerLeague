@@ -36,7 +36,7 @@ export default async function TeamPage({ params }: { params: { id: string } }) {
      JOIN teams ht ON ht.id = g.home_team_id
      JOIN teams at ON at.id = g.away_team_id
      WHERE g.home_team_id = $1 OR g.away_team_id = $1
-     ORDER BY g.game_date DESC`,
+     ORDER BY g.game_date ASC`,
     [params.id]
   );
 

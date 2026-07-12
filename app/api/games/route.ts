@@ -15,7 +15,7 @@ export async function GET() {
      FROM games g
      JOIN teams ht ON ht.id = g.home_team_id
      JOIN teams at ON at.id = g.away_team_id
-     ORDER BY g.game_date DESC`
+     ORDER BY status DESC, g.game_date ASC`
   );
   return NextResponse.json({ games: rows });
 }

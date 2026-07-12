@@ -23,7 +23,7 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
      FROM games g
      JOIN teams ht ON ht.id = g.home_team_id
      JOIN teams at ON at.id = g.away_team_id
-     ORDER BY g.game_date DESC`
+     ORDER BY g.game_date ASC`
   );
 
   const search = searchParams?.q?.trim().toLowerCase() || "";
@@ -35,8 +35,12 @@ export default async function HomePage({ searchParams }: { searchParams?: { q?: 
       game.stage ? GAME_STAGE_LABELS[game.stage] : "",
     ].some((value) => value.toLowerCase().includes(search)))
     : games;
-  const upcoming = visibleGames.filter((g) => g.status !== "final");
-  const played = visibleGames.filter((g) => g.status === "final");
+  const upcoming = visibleGames
+    .filter((g) => g.status !== "final")
+    .sort((a, b) => new Date(a.game_date).getTime() - new Date(b.game_date).getTime());
+  const played = visibleGames
+    .filter((g) => g.status === "final")
+    .sort((a, b) => new Date(b.game_date).getTime() - new Date(a.game_date).getTime());
 
   return (
     <Container maxWidth="md" sx={{ pb: 8 }}>
