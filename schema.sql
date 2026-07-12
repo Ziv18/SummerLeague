@@ -35,7 +35,18 @@ CREATE TABLE IF NOT EXISTS players (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-ALTER TABLE players RENAME position to active_league;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'players' AND column_name = 'position'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'players' AND column_name = 'active_league'
+  ) THEN
+    ALTER TABLE players RENAME COLUMN position TO active_league;
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS games (
   id SERIAL PRIMARY KEY,
@@ -45,8 +56,11 @@ CREATE TABLE IF NOT EXISTS games (
   away_score INTEGER,
   game_date TIMESTAMPTZ NOT NULL,
   status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled','live','final')),
+  stage TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE games ADD COLUMN IF NOT EXISTS stage TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
 CREATE INDEX IF NOT EXISTS idx_games_date ON games(game_date);

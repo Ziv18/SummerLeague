@@ -16,6 +16,7 @@ export interface Player {
 }
 
 export type GameStatus = "scheduled" | "live" | "final";
+export type GameStage = "firstRound" | "secindRound" | "upperPlayoff" | "lowerPlayoff" | "QuerterFinals" | "semiFinals" | "finals";
 
 export interface Game {
   id: number;
@@ -25,6 +26,7 @@ export interface Game {
   away_score: number | null;
   game_date: string;
   status: GameStatus;
+  stage: GameStage | null;
   created_at: string;
 }
 

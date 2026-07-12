@@ -1,6 +1,7 @@
-import { Container, Box, Typography, Card, Chip, Stack } from "@mui/material";
+import { Container, Box, Typography, Card, Chip, Stack, TextField, Button } from "@mui/material";
 import { query } from "@/lib/db";
 import { formatGameDate, formatGameTime } from "@/lib/date";
+import { GAME_STAGE_COLORS, GAME_STAGE_LABELS } from "@/lib/game-stage";
 import type { Game, GameStatus } from "@/lib/types";
 
 interface GameWithTeams extends Game {
@@ -15,7 +16,7 @@ interface GameWithTeams extends Game {
 const STATUS_LABELS: Record<GameStatus, string> = { scheduled: "מתוכנן", live: "חי", final: "סופי" };
 const STATUS_COLOR: Record<GameStatus, "default" | "success"> = { scheduled: "default", live: "success", final: "default" };
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams?: { q?: string } }) {
   const { rows: games } = await query<GameWithTeams>(
     `SELECT g.*, ht.name AS home_name, ht.color AS home_color, ht.color2 AS home_color2,
             at.name AS away_name, at.color AS away_color, at.color2 AS away_color2
@@ -25,8 +26,17 @@ export default async function HomePage() {
      ORDER BY g.game_date DESC`
   );
 
-  const upcoming = games.filter((g) => g.status !== "final");
-  const played = games.filter((g) => g.status === "final");
+  const search = searchParams?.q?.trim().toLowerCase() || "";
+  const visibleGames = search
+    ? games.filter((game) => [
+      game.home_name,
+      game.away_name,
+      STATUS_LABELS[game.status],
+      game.stage ? GAME_STAGE_LABELS[game.stage] : "",
+    ].some((value) => value.toLowerCase().includes(search)))
+    : games;
+  const upcoming = visibleGames.filter((g) => g.status !== "final");
+  const played = visibleGames.filter((g) => g.status === "final");
 
   return (
     <Container maxWidth="md" sx={{ pb: 8 }}>
@@ -41,6 +51,10 @@ export default async function HomePage() {
       </Box>
 
       <Typography variant="h5" sx={{ mb: 2 }}>קרוב ובשידור חי</Typography>
+      <Box component="form" method="GET" sx={{ display: "flex", gap: 1, mb: 2, maxWidth: 400 }}>
+        <TextField name="q" label="חיפוש משחק" defaultValue={searchParams?.q || ""} placeholder="קבוצה, סטטוס או שלב" size="small" fullWidth />
+        <Button type="submit" variant="contained">חיפוש</Button>
+      </Box>
       {upcoming.length === 0 ? (
         <Empty text="אין משחקים מתוכננים עדיין." />
       ) : (
@@ -109,6 +123,7 @@ function GameRow({ g }: { g: GameWithTeams }) {
             {hasScore ? g.home_score : "–"}
           </Typography>
           <Chip label={STATUS_LABELS[g.status]} size="small" color={STATUS_COLOR[g.status]} variant={g.status === "live" ? "filled" : "outlined"} />
+          {g.stage && <Chip label={GAME_STAGE_LABELS[g.stage]} size="small" sx={{ bgcolor: GAME_STAGE_COLORS[g.stage], color: "common.white", fontWeight: 700 }} />}
           <Typography sx={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 24, minWidth: 24, textAlign: "center" }}>
             {hasScore ? g.away_score : "–"}
           </Typography>

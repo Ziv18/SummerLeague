@@ -72,7 +72,7 @@ export default async function ManagerPage() {
           עריכת צבעי הקבוצה, והוספה/הסרה של שחקנים. לא ניתן לערוך משחקים או קבוצות אחרות מכאן.
         </Typography>
       </Box>
-      <TeamColorEditor team={team} onSaved={() => {}} />
+      <TeamColorEditor team={team} />
       <ManagerRoster teamId={team.id} />
     </Box>
   );

@@ -1,15 +1,22 @@
 "use client";
 import { useState, useEffect, type FormEvent } from "react";
 import {
-  Box, Typography, Paper, Stack, TextField, Button, Alert, MenuItem, Card,
+  Box, Typography, Paper, Stack, TextField, Button, Alert, MenuItem, Card, Chip,
 } from "@mui/material";
 import { formatGameDateTime } from "@/lib/date";
-import type { Team, Game, GameStatus } from "@/lib/types";
+import { GAME_STAGES, GAME_STAGE_COLORS, GAME_STAGE_LABELS } from "@/lib/game-stage";
+import type { Team, Game, GameStatus, GameStage } from "@/lib/types";
 
 interface GameWithTeams extends Game {
   home_name: string;
   away_name: string;
 }
+
+const STATUS_LABELS: Record<GameStatus, string> = {
+  scheduled: "מתוכנן",
+  live: "חי",
+  final: "סופי",
+};
 
 export default function AdminGamesPage() {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -17,6 +24,8 @@ export default function AdminGamesPage() {
   const [homeId, setHomeId] = useState("");
   const [awayId, setAwayId] = useState("");
   const [gameDate, setGameDate] = useState("");
+  const [stage, setStage] = useState<GameStage | "">("");
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +45,16 @@ export default function AdminGamesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleGames = normalizedSearch
+    ? games.filter((game) => [
+      game.home_name,
+      game.away_name,
+      game.status,
+      game.stage ? GAME_STAGE_LABELS[game.stage] : "",
+    ].some((value) => value.toLowerCase().includes(normalizedSearch)))
+    : games;
+
   async function addGame(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -46,7 +65,7 @@ export default function AdminGamesPage() {
     const res = await fetch("/api/games", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ home_team_id: homeId, away_team_id: awayId, game_date: new Date(gameDate).toISOString() }),
+      body: JSON.stringify({ home_team_id: homeId, away_team_id: awayId, game_date: new Date(gameDate).toISOString(), stage: stage || null }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -54,10 +73,11 @@ export default function AdminGamesPage() {
       return;
     }
     setGameDate("");
+    setStage("");
     load();
   }
 
-  async function updateGame(id: number, patch: Partial<{ home_score: number | null; away_score: number | null; status: GameStatus }>) {
+  async function updateGame(id: number, patch: Partial<{ home_score: number | null; away_score: number | null; status: GameStatus; stage: GameStage | null }>) {
     const res = await fetch(`/api/games/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -103,6 +123,10 @@ export default function AdminGamesPage() {
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
+            <TextField select label="שלב המשחק" value={stage} onChange={(e) => setStage(e.target.value as GameStage | "")} fullWidth>
+              <MenuItem value="">ללא תג</MenuItem>
+              {GAME_STAGES.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+            </TextField>
             {error && <Alert severity="error">{error}</Alert>}
             <Button type="submit" variant="contained" disabled={teams.length < 2}>קביעת משחק</Button>
             {teams.length < 2 && <Typography variant="body2" color="text.secondary">צריך לפחות 2 קבוצות קודם.</Typography>}
@@ -111,13 +135,20 @@ export default function AdminGamesPage() {
       </Paper>
 
       <Typography variant="h5" sx={{ mb: 2 }}>משחקים ותוצאות</Typography>
+      <TextField
+        label="חיפוש משחק"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="קבוצה, סטטוס או שלב"
+        sx={{ mb: 2, minWidth: 280 }}
+      />
       {loading ? (
         <Typography color="text.secondary">טוען…</Typography>
-      ) : games.length === 0 ? (
+      ) : visibleGames.length === 0 ? (
         <Typography color="text.secondary">אין משחקים עדיין.</Typography>
       ) : (
         <Stack spacing={1.5}>
-          {games.map((g) => <GameEditor key={g.id} g={g} onUpdate={updateGame} onDelete={removeGame} />)}
+          {visibleGames.map((g) => <GameEditor key={g.id} g={g} onUpdate={updateGame} onDelete={removeGame} />)}
         </Stack>
       )}
     </Box>
@@ -130,19 +161,21 @@ function GameEditor({
   onDelete,
 }: {
   g: GameWithTeams;
-  onUpdate: (id: number, patch: Partial<{ home_score: number | null; away_score: number | null; status: GameStatus }>) => Promise<boolean>;
+  onUpdate: (id: number, patch: Partial<{ home_score: number | null; away_score: number | null; status: GameStatus; stage: GameStage | null }>) => Promise<boolean>;
   onDelete: (id: number) => void;
 }) {
   const [homeScore, setHomeScore] = useState(g.home_score ?? "");
   const [awayScore, setAwayScore] = useState(g.away_score ?? "");
   const [status, setStatus] = useState<GameStatus>(g.status);
+  const [stage, setStage] = useState<GameStage | "">(g.stage || "");
   const [editing, setEditing] = useState(false);
-  const hasChanges = homeScore !== (g.home_score ?? "") || awayScore !== (g.away_score ?? "") || status !== g.status;
+  const hasChanges = homeScore !== (g.home_score ?? "") || awayScore !== (g.away_score ?? "") || status !== g.status || stage !== (g.stage || "");
 
   function cancel() {
     setHomeScore(g.home_score ?? "");
     setAwayScore(g.away_score ?? "");
     setStatus(g.status);
+    setStage(g.stage || "");
     setEditing(false);
   }
 
@@ -151,6 +184,7 @@ function GameEditor({
       home_score: homeScore === "" ? null : Number(homeScore),
       away_score: awayScore === "" ? null : Number(awayScore),
       status,
+      stage: stage || null,
     });
     if (saved) setEditing(false);
   }
@@ -189,13 +223,18 @@ function GameEditor({
           <MenuItem value="live">חי</MenuItem>
           <MenuItem value="final">סופי</MenuItem>
         </TextField>
+        <TextField select label="שלב המשחק" value={stage} onChange={(e) => setStage(e.target.value as GameStage | "")} sx={{ width: 170 }}>
+          <MenuItem value="">ללא תג</MenuItem>
+          {GAME_STAGES.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+        </TextField>
         <Button variant="contained" disabled={!hasChanges} onClick={save}>שמירה</Button>
         <Button onClick={cancel}>ביטול</Button>
         <Button color="error" onClick={() => onDelete(g.id)}>מחיקה</Button>
       </Stack> : <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
         <Typography>{g.home_name}: {g.home_score ?? "—"}</Typography>
         <Typography>{g.away_name}: {g.away_score ?? "—"}</Typography>
-        <Typography color="text.secondary">{status}</Typography>
+        <Typography color="text.secondary">{STATUS_LABELS[g.status]}</Typography>
+        {g.stage && <Chip size="small" label={GAME_STAGE_LABELS[g.stage]} sx={{ bgcolor: GAME_STAGE_COLORS[g.stage], color: "common.white", fontWeight: 700 }} />}
         <Button onClick={() => setEditing(true)}>עריכה</Button>
         <Button color="error" onClick={() => onDelete(g.id)}>מחיקה</Button>
       </Stack>}

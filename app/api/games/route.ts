@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { query } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-admin";
-import type { Game } from "@/lib/types";
+import type { Game, GameStage } from "@/lib/types";
+import { GAME_STAGES } from "@/lib/game-stage";
 
 interface GameWithTeams extends Game {
   home_name: string;
@@ -23,10 +24,11 @@ export async function POST(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "למנהלים בלבד." }, { status: 403 });
 
-  const { home_team_id, away_team_id, game_date } = (await req.json()) as {
+  const { home_team_id, away_team_id, game_date, stage } = (await req.json()) as {
     home_team_id?: number | string;
     away_team_id?: number | string;
     game_date?: string;
+    stage?: GameStage | null;
   };
   if (!home_team_id || !away_team_id || !game_date) {
     return NextResponse.json({ error: "יש לבחור קבוצת בית, קבוצת חוץ, ותאריך." }, { status: 400 });
@@ -34,11 +36,14 @@ export async function POST(req: NextRequest) {
   if (String(home_team_id) === String(away_team_id)) {
     return NextResponse.json({ error: "קבוצת הבית וקבוצת החוץ חייבות להיות שונות." }, { status: 400 });
   }
+  if (stage && !GAME_STAGES.some((item) => item.value === stage)) {
+    return NextResponse.json({ error: "שלב משחק לא תקין." }, { status: 400 });
+  }
 
   const { rows } = await query<Game>(
-    `INSERT INTO games (home_team_id, away_team_id, game_date, status)
-     VALUES ($1, $2, $3, 'scheduled') RETURNING *`,
-    [home_team_id, away_team_id, game_date]
+    `INSERT INTO games (home_team_id, away_team_id, game_date, status, stage)
+     VALUES ($1, $2, $3, 'scheduled', $4) RETURNING *`,
+    [home_team_id, away_team_id, game_date, stage || null]
   );
   return NextResponse.json({ game: rows[0] }, { status: 201 });
 }

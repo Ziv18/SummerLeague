@@ -31,7 +31,7 @@ export default function ManagerTeamSwitcher({ teams }: { teams: Team[] }) {
 
       {selected && (
         <Box key={selected.id}>
-          <TeamColorEditor team={selected} onSaved={() => {}} />
+          <TeamColorEditor team={selected} />
           <ManagerRoster teamId={selected.id} />
         </Box>
       )}

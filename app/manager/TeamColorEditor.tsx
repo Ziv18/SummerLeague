@@ -7,7 +7,7 @@ import type { Team } from "@/lib/types";
 // change that team's two colors. Reuses the same PATCH /api/teams/:id route
 // the admin teams page uses - the API route decides what's allowed
 // (canManageTeam), this component doesn't need to know the caller's role.
-export default function TeamColorEditor({ team, onSaved }: { team: Team; onSaved: () => void }) {
+export default function TeamColorEditor({ team }: { team: Team }) {
   const [color, setColor] = useState(team.color || "#F2A93B");
   const [color2, setColor2] = useState(team.color2 || "#0F1B2D");
   const [error, setError] = useState("");
@@ -36,7 +36,6 @@ export default function TeamColorEditor({ team, onSaved }: { team: Team; onSaved
       return;
     }
     setEditing(false);
-    onSaved();
   }
 
   return (

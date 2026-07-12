@@ -1,6 +1,7 @@
 import { Container, Box, Typography, Card, List, ListItem, ListItemText, Chip, Stack } from "@mui/material";
 import { query } from "@/lib/db";
 import { formatGameDate } from "@/lib/date";
+import { GAME_STAGE_COLORS, GAME_STAGE_LABELS } from "@/lib/game-stage";
 import type { Team, Player, Game, GameStatus } from "@/lib/types";
 
 interface GameWithTeams extends Game {
@@ -96,6 +97,7 @@ export default async function TeamPage({ params }: { params: { id: string } }) {
                 ) : (
                   <Chip size="small" label={STATUS_LABELS[g.status]} variant="outlined" />
                 )}
+                {g.stage && <Chip size="small" label={GAME_STAGE_LABELS[g.stage]} sx={{ bgcolor: GAME_STAGE_COLORS[g.stage], color: "common.white", fontWeight: 700 }} />}
               </Card>
             );
           })}
